@@ -1,0 +1,9 @@
+#!/bin/bash
+java -jar /home/corretor/corretor-automatico.jar \
+    "/home/T1/T1" \
+    gcc \
+    /home/corretor/tmp \
+    /home/corretor/casos-de-teste \
+    "800268, 819498, 805757" \
+    t1
+    

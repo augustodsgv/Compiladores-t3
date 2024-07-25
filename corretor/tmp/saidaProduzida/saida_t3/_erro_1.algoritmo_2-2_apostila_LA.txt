@@ -1,0 +1,2 @@
+'DeclaracaoContext' object has no attribute 'symbol'
+Fim da compilacao

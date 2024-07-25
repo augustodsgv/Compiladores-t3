@@ -1,0 +1,78 @@
+#!/opt/venv/bin/python
+import sys
+from antlr4 import *
+from GramaticaLexer import GramaticaLexer
+from GramaticaParser import GramaticaParser
+from antlr4.error.ErrorListener import ErrorListener
+
+class ErrorListenerLexer(ErrorListener):
+    def syntaxError(self, recognizer, offendingSymbol: str, line: int, column: int, msg: str, e) -> None:
+        error = str(e.input)[e.startIndex]
+
+        match error:
+            case '"':
+                raise Exception(f'Linha {line}: cadeia literal nao fechada')
+            case '{':
+                raise Exception(f'Linha {line}: comentario nao fechado')       
+            case _:
+                raise Exception(f'Linha {line}: {error} - simbolo nao identificado')
+
+class ErrorListenerParser(ErrorListener):
+    def syntaxError(self, recognizer, offendingSymbol: str, line: int, column: int, msg: str, e) -> None:
+        error_msg = offendingSymbol.text
+        if error_msg == '<EOF>':
+            error_msg = 'EOF'
+        raise Exception(f'Linha {offendingSymbol.line}: erro sintatico proximo a {error_msg}')
+
+        
+def build_lexer(input_stream : FileStream)->GramaticaLexer:
+    lexer = GramaticaLexer(input_stream)             # Criando um analizador lexer
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(ErrorListenerLexer())
+    return lexer
+
+def build_parser(lexer : GramaticaLexer)->GramaticaParser:
+    stream = CommonTokenStream(lexer)
+    parser = GramaticaParser(stream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ErrorListenerParser())
+    return parser
+
+def parse_error(parser : GramaticaParser)->list[str]:
+    error_list = []
+
+    try:
+        parser.programa()
+    except Exception as e:
+        error_list.append(str(e))
+        error_list.append("\nFim da compilacao\n")
+    finally:
+        return error_list
+    
+def write_errors(output_file : str, output_errors : list[str])->None:
+    with open(output_file, "w") as file:
+        file.writelines(output_errors)
+
+def main(input_file : str, output_file : str):
+    # Building compiler structe
+    input_stream = FileStream(input_file, encoding='utf-8')       # Lendo arquivo input
+    lexer = build_lexer(input_stream)
+    parser = build_parser(lexer)
+
+    # Parsing error
+    error_list = parse_error(parser)
+
+    # Write error, if exists
+    write_errors(output_file, error_list)
+    
+
+if __name__ == '__main__':
+    match len(sys.argv):
+        case 1:
+            print("Error: Missing input and output file parameters")
+            exit(1)
+        case 2:
+            print("Error: Missing output file parameter")
+            exit(1)
+        case 3:
+            main(sys.argv[1], sys.argv[2])

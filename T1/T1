@@ -1,0 +1,68 @@
+#!/opt/venv/bin/python
+import sys
+from antlr4 import *
+from Gramatica import Gramatica
+
+
+def read_tokens(lexer : Gramatica)->list[Token]:
+    token_list = []
+    while True:
+        # Reading token stream
+        try:
+            token : Token = lexer.nextToken()
+            if token.type == Token.EOF:
+                break
+            token_list.append(token)
+        except Exception as e:
+            print(f'Erro: {str(e)}')
+            exit(1)
+    return token_list
+
+def write_tokens(lexer : Gramatica, token_list : list[Token], output_file : str)->None:
+    with open(output_file, "w") as file:
+        for token in token_list:
+            # Getting token type
+            token_type = lexer.symbolicNames[token.type]
+            match token_type:
+                case 'COMENTARIO_ABERTO':
+                    file.write(f'Linha {token.line}: comentario nao fechado\n')
+                    break
+
+                case 'CADEIA_NAO_FECHADA':
+                    file.write(f'Linha {token.line}: cadeia literal nao fechada\n')
+                    break
+
+                case 'ERRO_CARACTER':
+                    file.write(f'Linha {token.line}: {token.text} - simbolo nao identificado\n')
+                    break
+                case 'COMENTARIO_FECHADO_2':
+                    file.write(f'Linha {token.line}: {'}'} - simbolo nao identificado\n')
+                    break
+                
+                case 'WS' | 'COMENTARIO':
+                    pass
+
+                case _ :
+                    if token_type in ('IDENT', 'CADEIA', 'NUM_INT', 'NUM_REAL'):
+                        file.write(f'<\'{token.text}\',{token_type}>\n')
+                    else:
+                        file.write(f'<\'{token.text}\',\'{token.text}\'>\n')
+
+def main(input_file : str, output_file : str):
+    input_stream = FileStream(input_file, encoding='utf-8')       # Lendo arquivo input
+
+    lexer = Gramatica(input_stream)             # Criando um analizador lexer
+    token_list = read_tokens(lexer)
+    write_tokens(lexer, token_list, output_file)
+    
+
+if __name__ == '__main__':
+    match len(sys.argv):
+        case 1:
+            print("Error: Missing input and output file parameters")
+            exit(1)
+        case 2:
+            print("Error: Missing output file parameter")
+            exit(1)
+        case 3:
+            main(sys.argv[1], sys.argv[2])
